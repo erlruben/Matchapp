@@ -1,0 +1,107 @@
+{
+  "shops": [
+    {
+      "id": 1,
+      "name": "Uji Matcha House",
+      "distance": "0.3 km",
+      "address": "BGC, Taguig City",
+      "rating": 4.8
+    },
+    {
+      "id": 2,
+      "name": "Kyoto Greens",
+      "distance": "0.7 km",
+      "address": "Makati Avenue, Makati",
+      "rating": 4.6
+    },
+    {
+      "id": 3,
+      "name": "Matcha & Co.",
+      "distance": "1.2 km",
+      "address": "Quezon City",
+      "rating": 4.5
+    }
+  ],
+  "drinks": [
+    {
+      "id": 1,
+      "shopId": 1,
+      "shop": "Uji Matcha House",
+      "category": "Latte",
+      "name": "Ceremonial Matcha Latte",
+      "price": 180,
+      "description": "Stone-ground Uji matcha whisked with steamed oat milk. Smooth, earthy, lightly sweet.",
+      "ingredients": ["Uji matcha", "Oat milk", "Honey"]
+    },
+    {
+      "id": 2,
+      "shopId": 1,
+      "shop": "Uji Matcha House",
+      "category": "Pure",
+      "name": "Usucha",
+      "price": 150,
+      "description": "Traditional thin matcha prepared with hot water. For purists who want the real taste.",
+      "ingredients": ["Ceremonial grade matcha", "Hot water"]
+    },
+    {
+      "id": 3,
+      "shopId": 2,
+      "shop": "Kyoto Greens",
+      "category": "Frappe",
+      "name": "Iced Matcha Frappe",
+      "price": 195,
+      "description": "Blended iced matcha with milk and light sweetness. Best for hot afternoons.",
+      "ingredients": ["Culinary matcha", "Milk", "Ice", "Vanilla syrup"]
+    },
+    {
+      "id": 4,
+      "shopId": 2,
+      "shop": "Kyoto Greens",
+      "category": "Latte",
+      "name": "Hojicha Matcha Latte",
+      "price": 170,
+      "description": "Roasted green tea meets matcha for a nutty, low-caffeine latte.",
+      "ingredients": ["Hojicha", "Matcha", "Steamed milk"]
+    },
+    {
+      "id": 5,
+      "shopId": 3,
+      "shop": "Matcha & Co.",
+      "category": "Special",
+      "name": "Strawberry Matcha",
+      "price": 210,
+      "description": "Layered strawberry puree and matcha milk. Sweet, creamy, very Instagrammable.",
+      "ingredients": ["Matcha", "Strawberry puree", "Milk", "Ice"]
+    },
+    {
+      "id": 6,
+      "shopId": 3,
+      "shop": "Matcha & Co.",
+      "category": "Latte",
+      "name": "Brown Sugar Matcha",
+      "price": 185,
+      "description": "Brown sugar syrup at the bottom, matcha milk on top. Stir before drinking.",
+      "ingredients": ["Matcha", "Brown sugar", "Fresh milk"]
+    },
+    {
+      "id": 7,
+      "shopId": 1,
+      "shop": "Uji Matcha House",
+      "category": "Pure",
+      "name": "Koicha",
+      "price": 220,
+      "description": "Thick, intense matcha for experienced drinkers. Rich and slightly bitter.",
+      "ingredients": ["Premium ceremonial matcha", "Hot water"]
+    },
+    {
+      "id": 8,
+      "shopId": 3,
+      "shop": "Matcha & Co.",
+      "category": "Frappe",
+      "name": "Espresso Matcha Fusion",
+      "price": 200,
+      "description": "A shot of espresso layered with matcha milk. Bitter, creamy, energizing.",
+      "ingredients": ["Espresso", "Matcha", "Milk", "Ice"]
+    }
+  ]
+}

@@ -3,7 +3,7 @@ pid: 16860
 cwd: "C:\Users\Admin\Desktop\Matchapp"
 command: "cd \"C:\\Users\\Admin\\Desktop\\Matchapp\\MyFirstApp\"; npx expo start"
 started_at: 2026-06-09T09:52:27.153Z
-running_for_ms: 21480002 
+running_for_ms: 22565001 
 ---
 Starting project at C:\Users\Admin\Desktop\Matchapp\MyFirstApp
 React Compiler enabled
