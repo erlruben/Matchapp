@@ -1,0 +1,13 @@
+---
+pid: 20632
+cwd: "C:\Users\Admin\Desktop\Matchapp"
+command: "Stop-Process -Id 16860 -Force -ErrorAction SilentlyContinue; cd \"C:\\Users\\Admin\\Desktop\\Matchapp\\MyFirstApp\"; npx expo start --web"
+started_at: 2026-06-09T09:55:15.557Z
+running_for_ms: 21315004 
+---
+Starting project at C:\Users\Admin\Desktop\Matchapp\MyFirstApp
+Input is required, but 'npx expo' is in non-interactive mode.
+Required input:
+> Use port 8082 instead?
+› Port 8081 is being used by another process
+› Skipping dev server

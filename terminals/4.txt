@@ -1,0 +1,16 @@
+---
+pid: 18612
+cwd: "C:\Users\Admin\Desktop\Matchapp"
+command: "cd \"C:\\Users\\Admin\\Desktop\\Matchapp\\MyFirstApp\"; npm run server"
+started_at: 2026-06-09T10:00:43.832Z
+running_for_ms: 20985014 
+---
+
+> myfirstapp@1.0.0 server
+> node server/index.js
+
+Matchap API running at http://localhost:3000
+Endpoints:
+  GET http://localhost:3000/api/matcha
+  GET http://localhost:3000/api/shops
+  GET http://localhost:3000/api/shops/1/menu
