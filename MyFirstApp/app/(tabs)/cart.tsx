@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
-import { useCallback, useState, useEffect } from 'react';
-import { useRouter, useFocusEffect as useExpoFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NavigationIndependentTree, useFocusEffect } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type CartItem = {
   id: string;
@@ -11,13 +11,11 @@ type CartItem = {
   name: string;
   price: string;
   desc: string;
-  note?: string;
-  expandedNote?: boolean;
 };
 
-const Stack = createStackNavigator();
+// ─── Cart Screen ─────────────────────────────────────────────────────────────
 
-function CartScreen({ navigation }: any) {
+export default function CartScreen() {
   const router = useRouter();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
@@ -25,31 +23,18 @@ function CartScreen({ navigation }: any) {
 
   const loadCart = useCallback(async () => {
     try {
-      // Add delay to ensure AsyncStorage has persisted the data
-      await new Promise(resolve => setTimeout(resolve, 150));
-      
       const itemsRaw = await AsyncStorage.getItem('cartItems');
       const notesRaw = await AsyncStorage.getItem('cartNotes');
-
-      if (itemsRaw) {
-        setCartItems(JSON.parse(itemsRaw));
-      } else {
-        setCartItems([]);
-      }
-
-      if (notesRaw) {
-        setNotes(JSON.parse(notesRaw));
-      } else {
-        setNotes({});
-      }
-    } catch (err) {
-      console.error('Failed to load cart:', err);
+      setCartItems(itemsRaw ? JSON.parse(itemsRaw) : []);
+      setNotes(notesRaw ? JSON.parse(notesRaw) : {});
+    } catch {
       setCartItems([]);
       setNotes({});
     }
   }, []);
 
-  // Refresh cart whenever screen comes into focus
+  // useFocusEffect from expo-router fires whenever this tab gains focus in the
+  // outer tab navigator — covers first visit and every return from another tab.
   useFocusEffect(
     useCallback(() => {
       loadCart();
@@ -57,57 +42,45 @@ function CartScreen({ navigation }: any) {
     }, [loadCart])
   );
 
-  // Also refresh immediately on mount
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
-
-  async function updateNote(itemId: string, noteText: string) {
-    const updatedNotes = { ...notes, [itemId]: noteText };
-    setNotes(updatedNotes);
-    
-    try {
-      await AsyncStorage.setItem('cartNotes', JSON.stringify(updatedNotes));
-    } catch {
-      // Keep the note visible so the user can retry.
-    }
-  }
-
-  async function confirmAllOrders() {
-    try {
-      await AsyncStorage.setItem('orderItems', JSON.stringify(cartItems));
-      await AsyncStorage.setItem('orderNotes', JSON.stringify(notes));
-    } catch {
-      // The order can still be reviewed even if notes cannot be stored.
-    }
-
-    navigation.navigate('OrderSummary', { items: cartItems, notes });
+  async function updateNote(itemId: string, text: string) {
+    const updated = { ...notes, [itemId]: text };
+    setNotes(updated);
+    AsyncStorage.setItem('cartNotes', JSON.stringify(updated)).catch(() => {});
   }
 
   async function removeItem(itemId: string) {
-    const updated = cartItems.filter(item => item.id !== itemId);
-    setCartItems(updated);
-    
+    const updatedItems = cartItems.filter((item) => item.id !== itemId);
     const updatedNotes = { ...notes };
     delete updatedNotes[itemId];
+    setCartItems(updatedItems);
     setNotes(updatedNotes);
-
     try {
-      await AsyncStorage.setItem('cartItems', JSON.stringify(updated));
+      await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
       await AsyncStorage.setItem('cartNotes', JSON.stringify(updatedNotes));
-    } catch {
-      // Keep items in memory
-    }
+    } catch {}
   }
+
+  async function confirmOrder() {
+    // Re-read from storage to avoid stale state from a concurrent remove.
+    try {
+      const freshRaw = await AsyncStorage.getItem('cartItems');
+      const freshNotesRaw = await AsyncStorage.getItem('cartNotes');
+      const freshItems: CartItem[] = freshRaw ? JSON.parse(freshRaw) : cartItems;
+      const freshNotes = freshNotesRaw ? JSON.parse(freshNotesRaw) : notes;
+      await AsyncStorage.setItem('orderItems', JSON.stringify(freshItems));
+      await AsyncStorage.setItem('orderNotes', JSON.stringify(freshNotes));
+    } catch {}
+    router.push('/order-summary');
+  }
+
+  // ─── Empty state ───────────────────────────────────────────────────────────
 
   if (cartItems.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.label}>unfnshed</Text>
-            <Text style={styles.title}>CART</Text>
-          </View>
+        <View style={styles.headerBlock}>
+          <Text style={styles.label}>unfnshed</Text>
+          <Text style={styles.title}>CART</Text>
         </View>
 
         <View style={styles.emptyBox}>
@@ -115,33 +88,30 @@ function CartScreen({ navigation }: any) {
           <Text style={styles.placeholderText}>choose a drink from the menu to start an order</Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={() => router.push({ pathname: '/(tabs)/menu' })}>
+        <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/menu')}>
           <Text style={styles.buttonText}>open menu</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={true}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.label}>unfnshed</Text>
-          <Text style={styles.title}>CART</Text>
-        </View>
-      </View>
+  // ─── Cart list ─────────────────────────────────────────────────────────────
 
-      <Text style={styles.itemCountLabel}>{cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart</Text>
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator>
+      <View style={styles.headerBlock}>
+        <Text style={styles.label}>unfnshed</Text>
+        <Text style={styles.title}>CART</Text>
+        <Text style={styles.itemCountLabel}>
+          {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart
+        </Text>
+      </View>
 
       {cartItems.map((item) => (
         <View key={item.id} style={styles.card}>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardLabel}>selected drink</Text>
-            <Text style={styles.cardItemName}>{item.name}</Text>
-            <Text style={styles.cardItemMeta}>
-              {item.category} / {item.price}
-            </Text>
-          </View>
+          <Text style={styles.cardLabel}>selected drink</Text>
+          <Text style={styles.cardItemName}>{item.name}</Text>
+          <Text style={styles.cardItemMeta}>{item.category} · {item.price}</Text>
 
           <TouchableOpacity
             style={styles.instructionButton}
@@ -153,150 +123,49 @@ function CartScreen({ navigation }: any) {
           </TouchableOpacity>
 
           {expandedNoteId === item.id && (
-            <View style={styles.expandedSection}>
-              <TextInput
-                style={styles.cardInput}
-                value={notes[item.id] || ''}
-                onChangeText={(text) => updateNote(item.id, text)}
-                placeholder="e.g. extra sugar, no ice..."
-                placeholderTextColor="#bbb"
-                multiline
-              />
-            </View>
+            <TextInput
+              style={styles.noteInput}
+              value={notes[item.id] || ''}
+              onChangeText={(text) => updateNote(item.id, text)}
+              placeholder="e.g. extra sugar, no ice..."
+              placeholderTextColor="#bbb"
+              multiline
+            />
           )}
 
-          <View style={styles.cardFooter}>
-            <TouchableOpacity
-              style={styles.cardButton}
-              onPress={() => confirmAllOrders()}
-            >
-              <Text style={styles.cardButtonText}>confirm order</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => removeItem(item.id)}
-            >
-              <Text style={styles.removeButtonText}>remove</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.removeButton} onPress={() => removeItem(item.id)}>
+            <Text style={styles.removeButtonText}>remove</Text>
+          </TouchableOpacity>
         </View>
       ))}
 
-      <TouchableOpacity style={styles.addMoreButton} onPress={() => router.push({ pathname: '/(tabs)/menu' })}>
+      <TouchableOpacity style={styles.addMoreButton} onPress={() => router.push('/(tabs)/menu')}>
         <Text style={styles.addMoreButtonText}>+ add more drinks</Text>
       </TouchableOpacity>
-    </ScrollView>
-  );
-}
 
-function OrderSummaryScreen({ route, navigation }: any) {
-  const router = useRouter();
-  const items = route.params?.items as CartItem[] | undefined;
-  const notes = route.params?.notes as { [key: string]: string } | undefined;
-
-  const calculateTotal = () => {
-    if (!items || items.length === 0) return 'PHP 0';
-    return `${items.length} items`;
-  };
-
-  async function startNewOrder() {
-    await AsyncStorage.multiRemove(['cartItems', 'cartNotes', 'orderItems', 'orderNotes']);
-    router.push({ pathname: '/(tabs)/menu' });
-  }
-
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={true}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.label}>unfnshed</Text>
-          <Text style={styles.title}>SUMMARY</Text>
-        </View>
-      </View>
-
-      <View style={styles.placeholderBox}>
-        <Text style={styles.placeholderLabel}>status</Text>
-        <Text style={styles.placeholderText}>ready for counter confirmation</Text>
-      </View>
-
-      <View style={styles.placeholderBox}>
-        <Text style={styles.placeholderLabel}>total items</Text>
-        <Text style={styles.itemName}>{calculateTotal()}</Text>
-      </View>
-
-      {items && items.map((item, index) => (
-        <View key={item.id} style={styles.summaryCard}>
-          <Text style={styles.summaryLabel}>drink #{index + 1}</Text>
-          <Text style={styles.summaryName}>{item.name}</Text>
-          <Text style={styles.summaryMeta}>{item.category} / {item.price}</Text>
-          {notes && notes[item.id] && (
-            <View style={styles.summaryNoteBox}>
-              <Text style={styles.summaryNoteLabel}>special instructions</Text>
-              <Text style={styles.summaryNoteText}>{notes[item.id]}</Text>
-            </View>
-          )}
-        </View>
-      ))}
-
-      <TouchableOpacity style={styles.button} onPress={startNewOrder}>
-        <Text style={styles.buttonText}>new order</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={[styles.outlineButton, styles.summaryBack]} onPress={() => navigation.goBack()}>
-        <Text style={styles.outlineButtonText}>&lt;- edit order</Text>
+      <TouchableOpacity style={styles.confirmButton} onPress={confirmOrder}>
+        <Text style={styles.confirmButtonText}>
+          confirm order ({cartItems.length} item{cartItems.length !== 1 ? 's' : ''})
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-export default function App() {
-  return (
-    <NavigationIndependentTree>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#000',
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          headerTintColor: '#000',
-          headerTitleStyle: { fontWeight: '400', letterSpacing: 2, fontSize: 13 },
-        }}
-      >
-        <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'CART' }} />
-        <Stack.Screen
-          name="OrderSummary"
-          component={OrderSummaryScreen}
-          options={{ title: 'SUMMARY', headerLeft: () => null }}
-        />
-      </Stack.Navigator>
-    </NavigationIndependentTree>
-  );
-}
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
     backgroundColor: '#fff',
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 16,
-    marginBottom: 24,
-  },
-  profileButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  profileButtonText: {
-    color: '#000',
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
+  headerBlock: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#000',
+    marginBottom: 8,
   },
   label: {
     fontSize: 11,
@@ -311,106 +180,18 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     color: '#000',
   },
-  section: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    color: '#999',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  input: {
-    minHeight: 88,
-    borderWidth: 1,
-    borderColor: '#000',
-    padding: 12,
-    fontSize: 14,
-    marginBottom: 12,
-    color: '#000',
-    backgroundColor: '#fff',
-    textAlignVertical: 'top',
-  },
-  button: {
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 13,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
-  },
-  outlineButton: {
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  outlineButtonText: {
-    color: '#000',
-    fontSize: 13,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
-  },
-  summaryBack: {
-    marginTop: 12,
-  },
-  itemBox: {
-    borderWidth: 1,
-    borderColor: '#000',
-    padding: 16,
-    marginBottom: 16,
-  },
-  itemName: {
-    color: '#000',
-    fontSize: 17,
-    fontWeight: '400',
-    marginBottom: 6,
-  },
-  itemMeta: {
+  itemCountLabel: {
+    fontSize: 12,
     color: '#666',
-    fontSize: 13,
+    marginTop: 4,
+    letterSpacing: 0.5,
   },
   emptyBox: {
     borderWidth: 1,
     borderStyle: 'dashed',
     borderColor: '#ccc',
     padding: 16,
-    marginBottom: 16,
-  },
-  savedBox: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#ccc',
-    padding: 16,
-    marginBottom: 16,
-  },
-  savedLabel: {
-    fontSize: 10,
-    color: '#999',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  savedText: {
-    fontSize: 15,
-    color: '#000',
-    marginBottom: 4,
-  },
-  savedTime: {
-    fontSize: 11,
-    color: '#666',
-  },
-  placeholderBox: {
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 16,
+    margin: 20,
     marginBottom: 12,
   },
   placeholderLabel: {
@@ -425,26 +206,13 @@ const styles = StyleSheet.create({
     color: '#666',
     lineHeight: 20,
   },
-  totalText: {
-    fontSize: 20,
-    color: '#000',
-    fontWeight: '300',
-  },
-  itemCountLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 16,
-    letterSpacing: 0.5,
-  },
   card: {
     borderWidth: 1,
     borderColor: '#000',
     padding: 16,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-  },
-  cardContent: {
+    marginHorizontal: 20,
     marginBottom: 12,
+    backgroundColor: '#fff',
   },
   cardLabel: {
     fontSize: 10,
@@ -457,19 +225,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '400',
     color: '#000',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   cardItemMeta: {
     fontSize: 13,
     color: '#666',
+    marginBottom: 12,
   },
   instructionButton: {
     borderWidth: 1,
     borderColor: '#000',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 12,
-    backgroundColor: '#fff',
+    marginBottom: 8,
   },
   instructionButtonText: {
     fontSize: 12,
@@ -477,11 +245,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'lowercase',
   },
-  expandedSection: {
-    marginBottom: 12,
-  },
-  cardInput: {
-    minHeight: 80,
+  noteInput: {
+    minHeight: 72,
     borderWidth: 1,
     borderColor: '#000',
     padding: 12,
@@ -489,31 +254,12 @@ const styles = StyleSheet.create({
     color: '#000',
     backgroundColor: '#fff',
     textAlignVertical: 'top',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cardButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: '#000',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  cardButtonText: {
-    color: '#fff',
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
+    marginBottom: 8,
   },
   removeButton: {
-    flex: 1,
     borderWidth: 1,
     borderColor: '#000',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: 'center',
   },
   removeButtonText: {
@@ -528,7 +274,8 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     paddingVertical: 12,
     alignItems: 'center',
-    marginBottom: 16,
+    marginHorizontal: 20,
+    marginBottom: 12,
   },
   addMoreButtonText: {
     color: '#000',
@@ -536,47 +283,34 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'lowercase',
   },
-  summaryCard: {
+  confirmButton: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    padding: 14,
+    borderColor: '#000',
+    backgroundColor: '#000',
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 32,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    letterSpacing: 1,
+    textTransform: 'lowercase',
+  },
+  button: {
+    borderWidth: 1,
+    borderColor: '#000',
+    backgroundColor: '#000',
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginHorizontal: 20,
     marginBottom: 12,
-    backgroundColor: '#f9f9f9',
   },
-  summaryLabel: {
-    fontSize: 10,
-    color: '#999',
+  buttonText: {
+    color: '#fff',
+    fontSize: 13,
     letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  summaryName: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#000',
-    marginBottom: 4,
-  },
-  summaryMeta: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  summaryNoteBox: {
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 8,
-    marginTop: 8,
-  },
-  summaryNoteLabel: {
-    fontSize: 9,
-    color: '#999',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  summaryNoteText: {
-    fontSize: 12,
-    color: '#333',
-    lineHeight: 18,
+    textTransform: 'lowercase',
   },
 });

@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
 type StoreUpdate = {
   id: number;
   title: string;
   body: string;
 };
+
+// ─── What's New Screen ───────────────────────────────────────────────────────
 
 export default function WhatsNewScreen() {
   const router = useRouter();
@@ -15,24 +19,25 @@ export default function WhatsNewScreen() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchStoreUpdates();
+    fetchUpdates();
   }, []);
 
-  async function fetchStoreUpdates() {
+  async function fetchUpdates() {
     try {
       setLoading(true);
       const response = await fetch('https://jsonplaceholder.typicode.com/posts');
       if (!response.ok) throw new Error('Request failed');
-
       const data = await response.json();
       setUpdates(data.slice(0, 8));
       setError('');
     } catch {
-      setError("Can't load unfnshed updates right now. Check your internet.");
+      setError("Can't load updates right now. Check your internet connection.");
     } finally {
       setLoading(false);
     }
   }
+
+  // ─── Loading ───────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -43,6 +48,8 @@ export default function WhatsNewScreen() {
     );
   }
 
+  // ─── Error ─────────────────────────────────────────────────────────────────
+
   if (error) {
     return (
       <View style={styles.centered}>
@@ -50,23 +57,21 @@ export default function WhatsNewScreen() {
           <Text style={styles.errorLabel}>[ offline ]</Text>
           <Text style={styles.errorText}>{error}</Text>
         </View>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchUpdates}>
+          <Text style={styles.retryButtonText}>retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
+  // ─── Feed ──────────────────────────────────────────────────────────────────
+
   return (
     <View style={styles.container}>
       <View style={styles.headerBlock}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.label}>unfnshed</Text>
-            <Text style={styles.heading}>NEW TODAY</Text>
-          </View>
-          <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/profile')}>
-            <Text style={styles.profileButtonText}>profile</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.subheading}>{updates.length} store updates loaded</Text>
+        <Text style={styles.label}>unfnshed</Text>
+        <Text style={styles.heading}>NEW TODAY</Text>
+        <Text style={styles.subheading}>{updates.length} store updates</Text>
       </View>
 
       <FlatList
@@ -74,7 +79,10 @@ export default function WhatsNewScreen() {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <TouchableOpacity style={styles.orderShortcut} onPress={() => router.push('/menu')}>
+          <TouchableOpacity
+            style={styles.orderShortcut}
+            onPress={() => router.push('/(tabs)/menu')}
+          >
             <Text style={styles.shortcutLabel}>ready to order?</Text>
             <Text style={styles.shortcutText}>open the unfnshed menu</Text>
           </TouchableOpacity>
@@ -90,6 +98,8 @@ export default function WhatsNewScreen() {
     </View>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   centered: {
@@ -112,6 +122,7 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     padding: 20,
     width: '100%',
+    marginBottom: 16,
   },
   errorLabel: {
     fontSize: 11,
@@ -125,6 +136,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  retryButton: {
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  retryButtonText: {
+    color: '#000',
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'lowercase',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -135,12 +158,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#000',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 16,
   },
   label: {
     fontSize: 11,
@@ -160,18 +177,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 0.5,
     marginTop: 4,
-  },
-  profileButton: {
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  profileButtonText: {
-    color: '#000',
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
   },
   list: {
     padding: 20,

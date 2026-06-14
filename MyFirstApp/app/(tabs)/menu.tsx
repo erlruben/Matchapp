@@ -1,10 +1,11 @@
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationIndependentTree } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { API_BASE } from '../../constants/api';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type MenuItem = {
   id: string;
@@ -16,50 +17,65 @@ type MenuItem = {
 
 const Stack = createStackNavigator();
 
-function MenuScreen({ navigation }: any) {
-  const router = useRouter();
+// ─── Shared Cart Utility ─────────────────────────────────────────────────────
+
+// Appends one item to the cart in AsyncStorage. ID is stamped with Date.now()
+// so the same drink can appear multiple times as separate entries.
+async function pushToCart(item: MenuItem): Promise<void> {
+  const raw = await AsyncStorage.getItem('cartItems');
+  const existing: MenuItem[] = raw ? JSON.parse(raw) : [];
+  const stamped = { ...item, id: `${item.id}-${Date.now()}` };
+  await AsyncStorage.setItem('cartItems', JSON.stringify([...existing, stamped]));
+}
+
+// ─── Menu Screen ─────────────────────────────────────────────────────────────
+
+function MenuScreen({ navigation }: { navigation: any }) {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [favorites, setFavorites] = useState<MenuItem[]>([]);
   const [favoritesLoaded, setFavoritesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
-  const [toastItem, setToastItem] = useState<string>('');
+  const [toastItem, setToastItem] = useState('');
+
+  // Tracks whether favorites have been intentionally changed (vs. just loaded from storage).
+  const favoritesInitialized = useRef(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadMenu();
     loadFavorites();
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
   }, []);
 
+  // Persist favorites only on intentional changes — skip the write that fires when
+  // favoritesLoaded first becomes true (we'd just be writing what we read).
   useEffect(() => {
-    async function saveFavorites() {
-      if (!favoritesLoaded) return;
-
-      try {
-        await AsyncStorage.setItem('matchaFavorites', JSON.stringify(favorites));
-      } catch {
-        // Favorites remain in memory if local storage is unavailable.
-      }
+    if (!favoritesLoaded) return;
+    if (!favoritesInitialized.current) {
+      favoritesInitialized.current = true;
+      return;
     }
-
-    saveFavorites();
+    AsyncStorage.setItem('matchaFavorites', JSON.stringify(favorites)).catch(() => {});
   }, [favorites, favoritesLoaded]);
 
   async function loadMenu() {
     try {
       const response = await fetch(`${API_BASE}/api/matcha`);
       if (!response.ok) throw new Error('Request failed');
-
       const data = await response.json();
-      const mapped = data.map((item: any) => ({
-        id: String(item.id),
-        category: item.category,
-        name: item.name,
-        price: 'PHP ' + item.price,
-        desc: item.description,
-      }));
-
-      setMenuItems(mapped);
+      setMenuItems(
+        data.map((item: any) => ({
+          id: String(item.id),
+          category: item.category,
+          name: item.name,
+          price: `PHP ${item.price}`,
+          desc: item.description,
+        }))
+      );
     } catch {
       setError('Could not load menu. Run "npm run server" first, then refresh.');
     } finally {
@@ -80,38 +96,24 @@ function MenuScreen({ navigation }: any) {
 
   async function addToCart(item: MenuItem) {
     try {
-      const existingRaw = await AsyncStorage.getItem('cartItems');
-      const existingItems = existingRaw ? JSON.parse(existingRaw) : [];
-      
-      // Add new item with unique ID
-      const newItem = {
-        ...item,
-        id: `${item.id}-${Date.now()}`, // Ensure unique ID for multiple same items
-      };
-      
-      const updatedItems = [...existingItems, newItem];
-      await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
-      
-      // Show toast
+      await pushToCart(item);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
       setToastItem(item.name);
       setToastVisible(true);
-      setTimeout(() => setToastVisible(false), 2000);
-    } catch (err) {
-      console.error('Failed to add to cart:', err);
+      toastTimer.current = setTimeout(() => setToastVisible(false), 2000);
+    } catch {
+      // Cart write failed; user can try again.
     }
   }
 
   function isFavorite(id: string) {
-    return favorites.some((item) => item.id === id);
+    return favorites.some((f) => f.id === id);
   }
 
   function toggleFavorite(item: MenuItem) {
-    if (isFavorite(item.id)) {
-      setFavorites(favorites.filter((favorite) => favorite.id !== item.id));
-      return;
-    }
-
-    setFavorites([...favorites, item]);
+    setFavorites((prev) =>
+      isFavorite(item.id) ? prev.filter((f) => f.id !== item.id) : [...prev, item]
+    );
   }
 
   if (loading) {
@@ -134,26 +136,29 @@ function MenuScreen({ navigation }: any) {
     );
   }
 
+  // Favorites float to the top; remaining items follow in server order.
+  const listData = [...favorites, ...menuItems.filter((item) => !isFavorite(item.id))];
+
   return (
     <View style={styles.container}>
       <View style={styles.headerBlock}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.label}>unfnshed</Text>
-            <Text style={styles.heading}>MENU</Text>
-          </View>
-        </View>
-        <Text style={styles.subheading}>{menuItems.length} drinks available</Text>
-        <Text style={styles.subheading}>{favorites.length} favorites saved</Text>
+        <Text style={styles.label}>unfnshed</Text>
+        <Text style={styles.heading}>MENU</Text>
+        <Text style={styles.subheading}>
+          {menuItems.length} drinks available · {favorites.length} saved
+        </Text>
       </View>
 
       <FlatList
-        data={[...favorites, ...menuItems.filter(item => !isFavorite(item.id))]}
-        keyExtractor={(item, index) => `${item.id}-${index}`}
+        data={listData}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <View style={styles.item}>
-            <TouchableOpacity activeOpacity={0.6} onPress={() => navigation.navigate('Detail', { coffee: item })}>
+            <TouchableOpacity
+              activeOpacity={0.6}
+              onPress={() => navigation.navigate('Detail', { coffee: item })}
+            >
               <Text style={styles.itemLabel}>{item.category}</Text>
               <Text style={styles.itemName}>{item.name}</Text>
               <Text style={styles.itemDesc}>{item.desc}</Text>
@@ -175,6 +180,7 @@ function MenuScreen({ navigation }: any) {
                     {isFavorite(item.id) ? 'saved' : 'favorite'}
                   </Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity style={styles.cartButton} onPress={() => addToCart(item)}>
                   <Text style={styles.cartButtonText}>to cart</Text>
                 </TouchableOpacity>
@@ -183,7 +189,7 @@ function MenuScreen({ navigation }: any) {
           </View>
         )}
       />
-      
+
       {toastVisible && (
         <View style={styles.toast}>
           <Text style={styles.toastText}>{toastItem} added to cart ✓</Text>
@@ -193,42 +199,34 @@ function MenuScreen({ navigation }: any) {
   );
 }
 
-function DetailScreen({ route, navigation }: any) {
-  const router = useRouter();
-  const { coffee } = route.params;
+// ─── Detail Screen ───────────────────────────────────────────────────────────
+
+function DetailScreen({ route, navigation }: { route: any; navigation: any }) {
+  const { coffee } = route.params as { coffee: MenuItem };
   const [toastVisible, setToastVisible] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+    };
+  }, []);
 
   async function addToCart() {
     try {
-      const existingRaw = await AsyncStorage.getItem('cartItems');
-      const existingItems = existingRaw ? JSON.parse(existingRaw) : [];
-      
-      // Add new item with unique ID
-      const newItem = {
-        ...coffee,
-        id: `${coffee.id}-${Date.now()}`, // Ensure unique ID for multiple same items
-      };
-      
-      const updatedItems = [...existingItems, newItem];
-      await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
-      
-      // Show toast
+      await pushToCart(coffee);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
       setToastVisible(true);
-      setTimeout(() => setToastVisible(false), 2000);
-    } catch (err) {
-      console.error('Failed to add to cart:', err);
+      toastTimer.current = setTimeout(() => setToastVisible(false), 2000);
+    } catch {
+      // Cart write failed; user can try again.
     }
   }
 
   return (
     <View style={styles.detailContainer}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.label}>unfnshed order</Text>
-          <Text style={styles.detailCategory}>{coffee.category}</Text>
-        </View>
-      </View>
-
+      <Text style={styles.label}>unfnshed order</Text>
+      <Text style={styles.detailCategory}>{coffee.category}</Text>
       <Text style={styles.detailName}>{coffee.name}</Text>
 
       <View style={styles.priceBox}>
@@ -242,7 +240,7 @@ function DetailScreen({ route, navigation }: any) {
       </View>
 
       <TouchableOpacity style={styles.primaryButton} activeOpacity={0.7} onPress={addToCart}>
-        <Text style={styles.primaryButtonText}>to cart</Text>
+        <Text style={styles.primaryButtonText}>add to cart</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -250,9 +248,9 @@ function DetailScreen({ route, navigation }: any) {
         activeOpacity={0.7}
         onPress={() => navigation.goBack()}
       >
-        <Text style={styles.backButtonText}>&lt;- back to menu</Text>
+        <Text style={styles.backButtonText}>← back to menu</Text>
       </TouchableOpacity>
-      
+
       {toastVisible && (
         <View style={styles.toast}>
           <Text style={styles.toastText}>{coffee.name} added to cart ✓</Text>
@@ -262,7 +260,9 @@ function DetailScreen({ route, navigation }: any) {
   );
 }
 
-export default function App() {
+// ─── Tab Export ──────────────────────────────────────────────────────────────
+
+export default function MenuTab() {
   return (
     <NavigationIndependentTree>
       <Stack.Navigator
@@ -288,6 +288,8 @@ export default function App() {
     </NavigationIndependentTree>
   );
 }
+
+// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   centered: {
@@ -333,22 +335,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#000',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 16,
-  },
-  profileButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  profileButtonText: {
-    color: '#000',
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
   },
   label: {
     fontSize: 11,
@@ -450,50 +436,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     textTransform: 'lowercase',
   },
-  favoritesBlock: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#bbb',
-    padding: 16,
-    marginTop: 8,
-  },
-  favoriteHeading: {
-    fontSize: 10,
-    color: '#999',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 10,
-  },
-  favoriteRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  favoriteName: {
-    flex: 1,
-    color: '#000',
-    fontSize: 14,
-    paddingRight: 12,
-  },
-  favoriteActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  addLink: {
-    color: '#000',
-    fontSize: 12,
-    textDecorationLine: 'underline',
-    textTransform: 'lowercase',
-  },
-  removeLink: {
-    color: '#666',
-    fontSize: 12,
-    textDecorationLine: 'underline',
-    textTransform: 'lowercase',
-  },
+  // Detail screen
   detailContainer: {
     flex: 1,
     padding: 24,
