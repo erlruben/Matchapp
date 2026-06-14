@@ -1,12 +1,14 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMenu } from '../../../context/MenuContext';
+import { useOrders } from '../../../context/OrderContext';
 
 // ─── Admin — Menu Item List ───────────────────────────────────────────────────
 
 export default function AdminScreen() {
   const router = useRouter();
   const { items, isLoaded, removeItem, toggleAvailable, toggleFeatured } = useMenu();
+  const { pendingCount } = useOrders();
 
   function confirmRemove(id: string, name: string) {
     Alert.alert(
@@ -33,6 +35,18 @@ export default function AdminScreen() {
       <View style={styles.staffBanner}>
         <Text style={styles.staffBannerText}>staff access only — not visible to customers</Text>
       </View>
+
+      <TouchableOpacity
+        style={styles.ordersButton}
+        onPress={() => router.push('/admin/orders')}
+      >
+        <Text style={styles.ordersButtonText}>view orders</Text>
+        {pendingCount > 0 && (
+          <View style={styles.ordersBadge}>
+            <Text style={styles.ordersBadgeText}>{pendingCount} pending</Text>
+          </View>
+        )}
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.addButton}
@@ -137,6 +151,37 @@ const styles = StyleSheet.create({
   },
   staffBannerText: {
     color: '#666',
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: 'lowercase',
+  },
+  ordersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#333',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    margin: 16,
+    marginBottom: 8,
+    minHeight: 52,
+  },
+  ordersButtonText: {
+    color: '#aaa',
+    fontSize: 13,
+    letterSpacing: 1,
+    textTransform: 'lowercase',
+  },
+  ordersBadge: {
+    backgroundColor: '#2d6a2d',
+    borderWidth: 1,
+    borderColor: '#3a8a3a',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  ordersBadgeText: {
+    color: '#6aaa6a',
     fontSize: 11,
     letterSpacing: 0.5,
     textTransform: 'lowercase',

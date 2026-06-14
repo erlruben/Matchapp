@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTabletLayout } from '../../constants/layout';
+import { useOrders } from '../../context/OrderContext';
 
 export default function TabLayout() {
   const { isTablet } = useTabletLayout();
+  const { pendingCount } = useOrders();
 
   return (
     <Tabs
@@ -52,6 +54,7 @@ export default function TabLayout() {
         name="admin"
         options={{
           title: 'Admin',
+          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),

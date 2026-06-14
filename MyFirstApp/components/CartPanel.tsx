@@ -2,12 +2,14 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Activi
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useCart } from '../context/CartContext';
+import { useOrders } from '../context/OrderContext';
 
 // ─── Inline cart panel shown alongside the menu on tablet ────────────────────
 
 export default function CartPanel() {
   const router = useRouter();
   const { cartItems, notes, isLoaded, removeItem, updateNote, confirmOrder } = useCart();
+  const { placeOrder } = useOrders();
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
   const total = cartItems.reduce((sum, item) => {
@@ -17,6 +19,7 @@ export default function CartPanel() {
 
   async function handleConfirm() {
     await confirmOrder();
+    await placeOrder(cartItems, notes);
     router.push('/order-summary');
   }
 
@@ -30,24 +33,7 @@ export default function CartPanel() {
     );
   }
 
-  // ─── Empty ─────────────────────────────────────────────────────────────────
-
-  if (cartItems.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerLabel}>fnshedrink</Text>
-          <Text style={styles.headerTitle}>CART</Text>
-        </View>
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyLabel}>status</Text>
-          <Text style={styles.emptyText}>select a drink from the menu to begin your order</Text>
-        </View>
-      </View>
-    );
-  }
-
-  // ─── Cart items ────────────────────────────────────────────────────────────
+  // ─── Unified render — header is always the same height ────────────────────
 
   return (
     <View style={styles.container}>
@@ -55,11 +41,17 @@ export default function CartPanel() {
         <Text style={styles.headerLabel}>fnshedrink</Text>
         <Text style={styles.headerTitle}>CART</Text>
         <Text style={styles.headerCount}>
-          {cartItems.length} item{cartItems.length !== 1 ? 's' : ''}
+          {cartItems.length === 0 ? 'no items yet' : `${cartItems.length} item${cartItems.length !== 1 ? 's' : ''}`}
         </Text>
       </View>
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
+        {cartItems.length === 0 && (
+          <View style={styles.emptyBox}>
+            <Text style={styles.emptyLabel}>status</Text>
+            <Text style={styles.emptyText}>select a drink from the menu to begin your order</Text>
+          </View>
+        )}
         {cartItems.map((item) => (
           <View key={item.id} style={styles.card}>
             <Text style={styles.cardLabel}>selected drink</Text>

@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Activi
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useCart } from '../../context/CartContext';
+import { useOrders } from '../../context/OrderContext';
 import { useTabletLayout } from '../../constants/layout';
 
 // ─── Cart Screen (phone) ──────────────────────────────────────────────────────
@@ -10,11 +11,13 @@ import { useTabletLayout } from '../../constants/layout';
 export default function CartScreen() {
   const router = useRouter();
   const { cartItems, notes, isLoaded, removeItem, updateNote, confirmOrder } = useCart();
+  const { placeOrder } = useOrders();
   const { isTablet } = useTabletLayout();
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
   async function handleConfirm() {
     await confirmOrder();
+    await placeOrder(cartItems, notes);
     router.push('/order-summary');
   }
 
