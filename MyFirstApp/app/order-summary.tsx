@@ -47,7 +47,7 @@ export default function OrderSummaryScreen() {
 
   async function startNewOrder() {
     await clearCart();
-    router.replace('/(tabs)/menu');
+    router.replace('/(tabs)/');
   }
 
   // ─── Loading ───────────────────────────────────────────────────────────────

@@ -71,7 +71,7 @@ export default function CartPanel() {
               onPress={() => setExpandedNoteId(expandedNoteId === item.id ? null : item.id)}
             >
               <Text style={styles.noteToggleText}>
-                {expandedNoteId === item.id ? '▼ special instructions' : '▶ special instructions'}
+                {expandedNoteId === item.id ? '– special instructions' : '+ special instructions'}
               </Text>
             </TouchableOpacity>
 

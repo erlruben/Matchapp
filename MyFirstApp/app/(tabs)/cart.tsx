@@ -81,7 +81,7 @@ export default function CartScreen() {
             onPress={() => setExpandedNoteId(expandedNoteId === item.id ? null : item.id)}
           >
             <Text style={styles.instructionButtonText}>
-              {expandedNoteId === item.id ? '▼ special instructions' : '▶ special instructions'}
+              {expandedNoteId === item.id ? '– special instructions' : '+ special instructions'}
             </Text>
           </TouchableOpacity>
 
