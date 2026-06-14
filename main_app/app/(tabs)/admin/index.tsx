@@ -38,7 +38,7 @@ export default function AdminScreen() {
 
       <TouchableOpacity
         style={styles.ordersButton}
-        onPress={() => router.push('/admin/orders')}
+        onPress={() => router.push('/(tabs)/admin/orders')}
       >
         <Text style={styles.ordersButtonText}>view orders</Text>
         {pendingCount > 0 && (
@@ -50,7 +50,7 @@ export default function AdminScreen() {
 
       <TouchableOpacity
         style={styles.addButton}
-        onPress={() => router.push('/admin/edit')}
+        onPress={() => router.push('/(tabs)/admin/edit')}
       >
         <Text style={styles.addButtonText}>+ add new item</Text>
       </TouchableOpacity>
@@ -85,7 +85,7 @@ export default function AdminScreen() {
             <View style={styles.cardActions}>
               <TouchableOpacity
                 style={styles.actionEdit}
-                onPress={() => router.push({ pathname: '/admin/edit', params: { id: item.id } })}
+                onPress={() => router.push({ pathname: '/(tabs)/admin/edit', params: { id: item.id } })}
               >
                 <Text style={styles.actionEditText}>edit</Text>
               </TouchableOpacity>

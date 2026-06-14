@@ -8,7 +8,7 @@ import { useOrders } from '../context/OrderContext';
 
 export default function CartPanel() {
   const router = useRouter();
-  const { cartItems, notes, isLoaded, removeItem, updateNote, confirmOrder } = useCart();
+  const { cartItems, notes, isLoaded, removeItem, updateNote, clearCart } = useCart();
   const { placeOrder } = useOrders();
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
@@ -18,8 +18,8 @@ export default function CartPanel() {
   }, 0);
 
   async function handleConfirm() {
-    await confirmOrder();
     await placeOrder(cartItems, notes);
+    await clearCart();
     router.push('/order-summary');
   }
 

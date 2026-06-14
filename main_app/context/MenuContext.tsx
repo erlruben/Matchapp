@@ -53,7 +53,7 @@ export function MenuProvider({ children }: { children: React.ReactNode }) {
         if (raw) {
           // Backfill `featured` for items saved before this field existed
           const parsed: MenuItem[] = JSON.parse(raw);
-          const migrated = parsed.map((i) => ({ featured: false, ...i }));
+          const migrated = parsed.map((i) => ({ ...i, featured: i.featured ?? false }));
           setItems(migrated);
         } else {
           setItems(SEED_ITEMS);

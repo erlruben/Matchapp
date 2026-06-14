@@ -1,44 +1,20 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCart } from '../context/CartContext';
+import { useOrders } from '../context/OrderContext';
 import { useTabletLayout } from '../constants/layout';
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type OrderItem = {
-  id: string;
-  category: string;
-  name: string;
-  price: string;
-  desc: string;
-};
 
 // ─── Order Summary Screen ────────────────────────────────────────────────────
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
   const { clearCart } = useCart();
+  const { orders, isLoaded } = useOrders();
   const { isTablet } = useTabletLayout();
 
-  const [items, setItems] = useState<OrderItem[]>([]);
-  const [notes, setNotes] = useState<{ [key: string]: string }>({});
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    loadOrder();
-  }, []);
-
-  async function loadOrder() {
-    try {
-      const itemsRaw = await AsyncStorage.getItem('orderItems');
-      const notesRaw = await AsyncStorage.getItem('orderNotes');
-      if (itemsRaw) setItems(JSON.parse(itemsRaw));
-      if (notesRaw) setNotes(JSON.parse(notesRaw));
-    } catch {}
-    setIsLoaded(true);
-  }
+  const order = orders[0];
+  const items = order?.items ?? [];
+  const notes = order?.notes ?? {};
 
   const total = items.reduce((sum, item) => {
     const num = parseFloat(item.price.replace(/[^0-9.]/g, ''));
@@ -47,7 +23,7 @@ export default function OrderSummaryScreen() {
 
   async function startNewOrder() {
     await clearCart();
-    router.replace('/(tabs)/');
+    router.replace('/(tabs)/' as any);
   }
 
   // ─── Loading ───────────────────────────────────────────────────────────────
@@ -104,10 +80,10 @@ export default function OrderSummaryScreen() {
 
       <TouchableOpacity
         style={[styles.outlineButton, isTablet && styles.outlineButtonTablet]}
-        onPress={() => router.back()}
+        onPress={() => router.push('/(tabs)/menu')}
       >
         <Text style={[styles.outlineButtonText, isTablet && styles.outlineButtonTextTablet]}>
-          edit order
+          back to menu
         </Text>
       </TouchableOpacity>
     </ScrollView>

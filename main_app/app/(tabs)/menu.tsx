@@ -80,6 +80,7 @@ export default function MenuScreen() {
             renderItem={({ item }) => (
               <View style={[styles.item, isTablet && styles.itemTablet, item.featured && styles.itemFeatured]}>
                 <TouchableOpacity
+                  style={{ flex: 1 }}
                   activeOpacity={0.6}
                   onPress={() =>
                     router.push({ pathname: '/menu-detail', params: { itemId: item.id } })
@@ -199,6 +200,8 @@ const styles = StyleSheet.create({
     borderColor: '#000',
     padding: 16,
     backgroundColor: '#fff',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
   },
   itemTablet: {
     padding: 20,

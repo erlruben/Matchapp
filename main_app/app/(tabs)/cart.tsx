@@ -10,14 +10,14 @@ import { useTabletLayout } from '../../constants/layout';
 
 export default function CartScreen() {
   const router = useRouter();
-  const { cartItems, notes, isLoaded, removeItem, updateNote, confirmOrder } = useCart();
+  const { cartItems, notes, isLoaded, removeItem, updateNote, clearCart } = useCart();
   const { placeOrder } = useOrders();
   const { isTablet } = useTabletLayout();
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
 
   async function handleConfirm() {
-    await confirmOrder();
     await placeOrder(cartItems, notes);
+    await clearCart();
     router.push('/order-summary');
   }
 
