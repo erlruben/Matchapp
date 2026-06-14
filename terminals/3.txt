@@ -3,7 +3,7 @@ pid: 11460
 cwd: "C:\Users\Admin\Desktop\Matchapp"
 command: "Get-NetTCPConnection -LocalPort 8081 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Start-Sleep -Seconds 2; cd \"C:\\Users\\Admin\\Desktop\\Matchapp\\MyFirstApp\"; npx expo start --web"
 started_at: 2026-06-09T09:56:25.521Z
-running_for_ms: 21244996 
+running_for_ms: 47315001 
 ---
 Starting project at C:\Users\Admin\Desktop\Matchapp\MyFirstApp
 React Compiler enabled

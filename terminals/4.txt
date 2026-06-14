@@ -3,7 +3,7 @@ pid: 18612
 cwd: "C:\Users\Admin\Desktop\Matchapp"
 command: "cd \"C:\\Users\\Admin\\Desktop\\Matchapp\\MyFirstApp\"; npm run server"
 started_at: 2026-06-09T10:00:43.832Z
-running_for_ms: 20985014 
+running_for_ms: 47060003 
 ---
 
 > myfirstapp@1.0.0 server

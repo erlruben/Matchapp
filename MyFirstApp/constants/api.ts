@@ -1,8 +1,10 @@
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
-// Web + iOS simulator → localhost
-// Android emulator → 10.0.2.2 (special alias for host machine)
-// Physical phone on Expo Go → replace with your PC's Wi-Fi IP, e.g. 'http://192.168.1.5:3000'
-const HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+const expoHost = Constants.expoConfig?.hostUri?.split(':')[0];
+
+// Android emulator uses this alias for the host machine. Expo Go can usually
+// infer the dev server's LAN host from the manifest.
+const HOST = Platform.OS === 'android' && !expoHost ? '10.0.2.2' : expoHost ?? 'localhost';
 
 export const API_BASE = `http://${HOST}:3000`;

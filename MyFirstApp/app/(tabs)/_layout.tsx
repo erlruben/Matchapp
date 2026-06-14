@@ -1,7 +1,7 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useNavigation } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
 
-// ─── Tab Layout ───────────────────────────────────────────────────────────────
 export default function TabLayout() {
   return (
     <Tabs
@@ -20,9 +20,18 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          title: "What's New",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
           title: 'Menu',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="square-outline" size={size} color={color} />
+            <Ionicons name="cafe-outline" size={size} color={color} />
           ),
         }}
       />
@@ -33,15 +42,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={size} color={color} />
-          ),
+          unmountOnBlur: true,
         }}
       />
     </Tabs>

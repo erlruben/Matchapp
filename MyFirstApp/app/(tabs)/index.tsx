@@ -1,47 +1,34 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { useState, useEffect } from 'react';
-import { NavigationIndependentTree } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-import { API_BASE } from '../../constants/api';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-type MenuItem = {
-  id: string;
-  category: string;
-  name: string;
-  price: string;
-  desc: string;
+type StoreUpdate = {
+  id: number;
+  title: string;
+  body: string;
 };
 
-const Stack = createStackNavigator();
-
-// ─── Home Screen ─────────────────────────────────────────────────────────────
-function HomeScreen({ navigation }: any) {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+export default function WhatsNewScreen() {
+  const router = useRouter();
+  const [updates, setUpdates] = useState<StoreUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadMenu();
+    fetchStoreUpdates();
   }, []);
 
-  async function loadMenu() {
+  async function fetchStoreUpdates() {
     try {
-      const response = await fetch(`${API_BASE}/api/matcha`);
+      setLoading(true);
+      const response = await fetch('https://jsonplaceholder.typicode.com/posts');
       if (!response.ok) throw new Error('Request failed');
 
       const data = await response.json();
-      const mapped = data.map((item: any) => ({
-        id: String(item.id),
-        category: item.category,
-        name: item.name,
-        price: '₱' + item.price,
-        desc: item.description,
-      }));
-
-      setMenuItems(mapped);
+      setUpdates(data.slice(0, 8));
+      setError('');
     } catch {
-      setError('Could not load menu. Run "npm run server" first, then refresh.');
+      setError("Can't load unfnshed updates right now. Check your internet.");
     } finally {
       setLoading(false);
     }
@@ -51,7 +38,7 @@ function HomeScreen({ navigation }: any) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#000" />
-        <Text style={styles.metaText}>loading menu...</Text>
+        <Text style={styles.metaText}>loading updates...</Text>
       </View>
     );
   }
@@ -60,7 +47,7 @@ function HomeScreen({ navigation }: any) {
     return (
       <View style={styles.centered}>
         <View style={styles.errorBox}>
-          <Text style={styles.errorLabel}>[ error ]</Text>
+          <Text style={styles.errorLabel}>[ offline ]</Text>
           <Text style={styles.errorText}>{error}</Text>
         </View>
       </View>
@@ -70,92 +57,40 @@ function HomeScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.headerBlock}>
-        <Text style={styles.label}>[ screen ]</Text>
-        <Text style={styles.heading}>MENU</Text>
-        <Text style={styles.subheading}>{menuItems.length} items loaded</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.label}>unfnshed</Text>
+            <Text style={styles.heading}>NEW TODAY</Text>
+          </View>
+          <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/profile')}>
+            <Text style={styles.profileButtonText}>profile</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.subheading}>{updates.length} store updates loaded</Text>
       </View>
 
       <FlatList
-        data={menuItems}
-        keyExtractor={(item) => item.id}
+        data={updates}
+        keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.item}
-            activeOpacity={0.6}
-            onPress={() => navigation.navigate('Detail', { coffee: item })}
-          >
-            <Text style={styles.itemLabel}>{item.category}</Text>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <View style={styles.itemFooter}>
-              <Text style={styles.itemPrice}>{item.price}</Text>
-              <Text style={styles.itemAction}>view →</Text>
-            </View>
+        ListHeaderComponent={
+          <TouchableOpacity style={styles.orderShortcut} onPress={() => router.push('/menu')}>
+            <Text style={styles.shortcutLabel}>ready to order?</Text>
+            <Text style={styles.shortcutText}>open the unfnshed menu</Text>
           </TouchableOpacity>
+        }
+        renderItem={({ item }) => (
+          <View style={styles.feedCard}>
+            <Text style={styles.cardLabel}>store update #{item.id}</Text>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.body}>{item.body}</Text>
+          </View>
         )}
       />
     </View>
   );
 }
 
-// ─── Detail Screen ───────────────────────────────────────────────────────────
-function DetailScreen({ route, navigation }: any) {
-  const { coffee } = route.params;
-
-  return (
-    <View style={styles.detailContainer}>
-      <Text style={styles.label}>[ detail ]</Text>
-      <Text style={styles.detailCategory}>{coffee.category}</Text>
-      <Text style={styles.detailName}>{coffee.name}</Text>
-
-      <View style={styles.priceBox}>
-        <Text style={styles.priceLabel}>price</Text>
-        <Text style={styles.detailPrice}>{coffee.price}</Text>
-      </View>
-
-      <View style={styles.descBox}>
-        <Text style={styles.descLabel}>description</Text>
-        <Text style={styles.detailDesc}>{coffee.desc}</Text>
-      </View>
-
-      <TouchableOpacity
-        style={styles.backButton}
-        activeOpacity={0.7}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.backButtonText}>← back to menu</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-// ─── App ─────────────────────────────────────────────────────────────────────
-export default function App() {
-  return (
-    <NavigationIndependentTree>
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#fff',
-            borderBottomWidth: 1,
-            borderBottomColor: '#000',
-            elevation: 0,
-            shadowOpacity: 0,
-          },
-          headerTintColor: '#000',
-          headerTitleStyle: { fontWeight: '400', letterSpacing: 2, fontSize: 13 },
-        }}
-      >
-        <Stack.Screen name="Menu" component={HomeScreen} options={{ title: 'MENU' }} />
-        <Stack.Screen
-          name="Detail" component={DetailScreen} options={{ title: 'DETAIL', headerLeft: () => null}}
-        />
-      </Stack.Navigator>
-    </NavigationIndependentTree>
-  );
-}
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   centered: {
     flex: 1,
@@ -186,8 +121,8 @@ const styles = StyleSheet.create({
     textTransform: 'lowercase',
   },
   errorText: {
-    fontSize: 14,
     color: '#000',
+    fontSize: 14,
     lineHeight: 20,
   },
   container: {
@@ -201,6 +136,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#000',
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 16,
+  },
   label: {
     fontSize: 11,
     color: '#999',
@@ -209,123 +150,76 @@ const styles = StyleSheet.create({
     textTransform: 'lowercase',
   },
   heading: {
+    color: '#000',
     fontSize: 28,
     fontWeight: '300',
-    color: '#000',
     letterSpacing: 4,
   },
   subheading: {
-    fontSize: 12,
     color: '#666',
-    marginTop: 4,
+    fontSize: 12,
     letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  profileButton: {
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  profileButtonText: {
+    color: '#000',
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'lowercase',
   },
   list: {
     padding: 20,
     gap: 12,
   },
-  item: {
+  orderShortcut: {
+    borderWidth: 1,
+    borderColor: '#000',
+    backgroundColor: '#000',
+    padding: 16,
+  },
+  shortcutLabel: {
+    color: '#999',
+    fontSize: 10,
+    letterSpacing: 1,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  shortcutText: {
+    color: '#fff',
+    fontSize: 16,
+    letterSpacing: 0.5,
+    textTransform: 'lowercase',
+  },
+  feedCard: {
     borderWidth: 1,
     borderColor: '#000',
     padding: 16,
     backgroundColor: '#fff',
   },
-  itemLabel: {
-    fontSize: 10,
+  cardLabel: {
     color: '#999',
+    fontSize: 10,
     letterSpacing: 1.5,
+    marginBottom: 8,
     textTransform: 'uppercase',
-    marginBottom: 6,
   },
-  itemName: {
+  title: {
+    color: '#000',
     fontSize: 16,
     fontWeight: '400',
-    color: '#000',
-    marginBottom: 12,
-  },
-  itemFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
-    paddingTop: 10,
-  },
-  itemPrice: {
-    fontSize: 14,
-    color: '#000',
-  },
-  itemAction: {
-    fontSize: 12,
-    color: '#666',
-    letterSpacing: 0.5,
-  },
-  detailContainer: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  detailCategory: {
-    fontSize: 11,
-    color: '#999',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  detailName: {
-    fontSize: 26,
-    fontWeight: '300',
-    color: '#000',
-    letterSpacing: 1,
-    marginBottom: 24,
-  },
-  priceBox: {
-    borderWidth: 1,
-    borderColor: '#000',
-    padding: 16,
-    marginBottom: 16,
-  },
-  priceLabel: {
-    fontSize: 10,
-    color: '#999',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  detailPrice: {
-    fontSize: 20,
-    color: '#000',
-    fontWeight: '300',
-  },
-  descBox: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#ccc',
-    padding: 16,
-    marginBottom: 32,
-  },
-  descLabel: {
-    fontSize: 10,
-    color: '#999',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  detailDesc: {
-    fontSize: 14,
-    color: '#333',
     lineHeight: 22,
+    marginBottom: 10,
+    textTransform: 'capitalize',
   },
-  backButton: {
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#000',
-    fontSize: 13,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
+  body: {
+    color: '#333',
+    fontSize: 14,
+    lineHeight: 22,
   },
 });

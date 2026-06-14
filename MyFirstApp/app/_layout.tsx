@@ -1,7 +1,6 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-// ─── Root Layout ─────────────────────────────────────────────────────────────
 export default function RootLayout() {
   return (
     <>
