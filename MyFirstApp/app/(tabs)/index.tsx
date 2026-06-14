@@ -1,100 +1,59 @@
-import { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCart } from '../../context/CartContext';
+import { useTabletLayout } from '../../constants/layout';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Welcome / Kiosk Home Screen ─────────────────────────────────────────────
 
-type StoreUpdate = {
-  id: number;
-  title: string;
-  body: string;
-};
-
-// ─── What's New Screen ───────────────────────────────────────────────────────
-
-export default function WhatsNewScreen() {
+export default function WelcomeScreen() {
   const router = useRouter();
-  const [updates, setUpdates] = useState<StoreUpdate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    fetchUpdates();
-  }, []);
-
-  async function fetchUpdates() {
-    try {
-      setLoading(true);
-      const response = await fetch('https://jsonplaceholder.typicode.com/posts');
-      if (!response.ok) throw new Error('Request failed');
-      const data = await response.json();
-      setUpdates(data.slice(0, 8));
-      setError('');
-    } catch {
-      setError("Can't load updates right now. Check your internet connection.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ─── Loading ───────────────────────────────────────────────────────────────
-
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#000" />
-        <Text style={styles.metaText}>loading updates...</Text>
-      </View>
-    );
-  }
-
-  // ─── Error ─────────────────────────────────────────────────────────────────
-
-  if (error) {
-    return (
-      <View style={styles.centered}>
-        <View style={styles.errorBox}>
-          <Text style={styles.errorLabel}>[ offline ]</Text>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchUpdates}>
-          <Text style={styles.retryButtonText}>retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  // ─── Feed ──────────────────────────────────────────────────────────────────
+  const { cartItems } = useCart();
+  const { isTablet } = useTabletLayout();
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerBlock}>
-        <Text style={styles.label}>unfnshed</Text>
-        <Text style={styles.heading}>NEW TODAY</Text>
-        <Text style={styles.subheading}>{updates.length} store updates</Text>
-      </View>
+      <View style={[styles.inner, isTablet && styles.innerTablet]}>
 
-      <FlatList
-        data={updates}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.list}
-        ListHeaderComponent={
+        {/* Brand */}
+        <View style={styles.brandBlock}>
+          <Text style={[styles.brandName, isTablet && styles.brandNameTablet]}>fnshedrink</Text>
+          <Text style={[styles.tagline, isTablet && styles.taglineTablet]}>MATCHA BAR</Text>
+        </View>
+
+        {/* Prompt */}
+        <Text style={[styles.prompt, isTablet && styles.promptTablet]}>
+          what would you like today?
+        </Text>
+
+        {/* Featured drinks hint */}
+        <View style={styles.hintBox}>
+          <Text style={styles.hintLabel}>{"today's selection"}</Text>
+          <Text style={styles.hintText}>ceremonial lattes · pure matcha · frappes · specials</Text>
+        </View>
+
+        {/* Primary CTA */}
+        <TouchableOpacity
+          style={[styles.startButton, isTablet && styles.startButtonTablet]}
+          onPress={() => router.push('/(tabs)/menu')}
+        >
+          <Text style={[styles.startButtonText, isTablet && styles.startButtonTextTablet]}>
+            start ordering
+          </Text>
+        </TouchableOpacity>
+
+        {/* Resume in-progress cart if one exists */}
+        {cartItems.length > 0 && (
           <TouchableOpacity
-            style={styles.orderShortcut}
-            onPress={() => router.push('/(tabs)/menu')}
+            style={[styles.resumeButton, isTablet && styles.resumeButtonTablet]}
+            onPress={() => router.push(isTablet ? '/(tabs)/menu' : '/(tabs)/cart')}
           >
-            <Text style={styles.shortcutLabel}>ready to order?</Text>
-            <Text style={styles.shortcutText}>open the unfnshed menu</Text>
+            <Text style={[styles.resumeButtonText, isTablet && styles.resumeButtonTextTablet]}>
+              resume order — {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart
+            </Text>
           </TouchableOpacity>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.feedCard}>
-            <Text style={styles.cardLabel}>store update #{item.id}</Text>
-            <Text style={styles.title}>{item.title}</Text>
-            <Text style={styles.body}>{item.body}</Text>
-          </View>
         )}
-      />
+
+      </View>
     </View>
   );
 }
@@ -102,129 +61,121 @@ export default function WhatsNewScreen() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 24,
-  },
-  metaText: {
-    marginTop: 12,
-    fontSize: 12,
-    color: '#666',
-    letterSpacing: 1,
-    textTransform: 'lowercase',
-  },
-  errorBox: {
-    borderWidth: 1,
-    borderColor: '#000',
-    borderStyle: 'dashed',
-    padding: 20,
-    width: '100%',
-    marginBottom: 16,
-  },
-  errorLabel: {
-    fontSize: 11,
-    color: '#666',
-    letterSpacing: 1,
-    marginBottom: 8,
-    textTransform: 'lowercase',
-  },
-  errorText: {
-    color: '#000',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  retryButton: {
-    borderWidth: 1,
-    borderColor: '#000',
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-  },
-  retryButtonText: {
-    color: '#000',
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: 'lowercase',
-  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  headerBlock: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
+  inner: {
+    width: '100%',
+    maxWidth: 480,
+    paddingHorizontal: 32,
   },
-  label: {
-    fontSize: 11,
-    color: '#999',
-    letterSpacing: 1,
-    marginBottom: 6,
+  innerTablet: {
+    maxWidth: 640,
+    paddingHorizontal: 64,
+  },
+  brandBlock: {
+    marginBottom: 40,
+  },
+  brandName: {
+    fontSize: 42,
+    fontWeight: '200',
+    color: '#000',
+    letterSpacing: 6,
     textTransform: 'lowercase',
   },
-  heading: {
-    color: '#000',
-    fontSize: 28,
-    fontWeight: '300',
-    letterSpacing: 4,
+  brandNameTablet: {
+    fontSize: 64,
+    letterSpacing: 8,
   },
-  subheading: {
-    color: '#666',
-    fontSize: 12,
-    letterSpacing: 0.5,
+  tagline: {
+    fontSize: 13,
+    color: '#999',
+    letterSpacing: 6,
     marginTop: 4,
   },
-  list: {
-    padding: 20,
-    gap: 12,
-  },
-  orderShortcut: {
-    borderWidth: 1,
-    borderColor: '#000',
-    backgroundColor: '#000',
-    padding: 16,
-  },
-  shortcutLabel: {
-    color: '#999',
-    fontSize: 10,
-    letterSpacing: 1,
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  shortcutText: {
-    color: '#fff',
+  taglineTablet: {
     fontSize: 16,
+    letterSpacing: 8,
+    marginTop: 8,
+  },
+  prompt: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: '300',
+    marginBottom: 24,
     letterSpacing: 0.5,
+  },
+  promptTablet: {
+    fontSize: 24,
+    marginBottom: 32,
+  },
+  hintBox: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderStyle: 'dashed',
+    padding: 16,
+    marginBottom: 32,
+  },
+  hintLabel: {
+    fontSize: 9,
+    color: '#999',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  hintText: {
+    fontSize: 13,
+    color: '#444',
+    lineHeight: 20,
     textTransform: 'lowercase',
   },
-  feedCard: {
+  startButton: {
+    backgroundColor: '#000',
     borderWidth: 1,
     borderColor: '#000',
-    padding: 16,
-    backgroundColor: '#fff',
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    minHeight: 52,
+    justifyContent: 'center',
   },
-  cardLabel: {
-    color: '#999',
-    fontSize: 10,
-    letterSpacing: 1.5,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+  startButtonTablet: {
+    paddingVertical: 22,
+    minHeight: 68,
   },
-  title: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '400',
-    lineHeight: 22,
-    marginBottom: 10,
-    textTransform: 'capitalize',
-  },
-  body: {
-    color: '#333',
+  startButtonText: {
+    color: '#fff',
     fontSize: 14,
-    lineHeight: 22,
+    letterSpacing: 2,
+    textTransform: 'lowercase',
+  },
+  startButtonTextTablet: {
+    fontSize: 18,
+    letterSpacing: 3,
+  },
+  resumeButton: {
+    borderWidth: 1,
+    borderColor: '#000',
+    paddingVertical: 14,
+    alignItems: 'center',
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  resumeButtonTablet: {
+    paddingVertical: 18,
+    minHeight: 60,
+  },
+  resumeButtonText: {
+    color: '#000',
+    fontSize: 12,
+    letterSpacing: 1,
+    textTransform: 'lowercase',
+  },
+  resumeButtonTextTablet: {
+    fontSize: 15,
+    letterSpacing: 1.5,
   },
 });

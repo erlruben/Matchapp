@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTabletLayout } from '../../constants/layout';
 
 export default function TabLayout() {
+  const { isTablet } = useTabletLayout();
+
   return (
     <Tabs
       screenOptions={{
@@ -34,6 +37,7 @@ export default function TabLayout() {
           ),
         }}
       />
+      {/* Cart tab hidden on tablet — the cart panel is inline in the menu split view */}
       <Tabs.Screen
         name="cart"
         options={{
@@ -41,7 +45,16 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="cart-outline" size={size} color={color} />
           ),
-          unmountOnBlur: true,
+          tabBarButton: isTablet ? () => null : undefined,
+        }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

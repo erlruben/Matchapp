@@ -1,86 +1,46 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 'react-native';
-import { useCallback, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useCart } from '../../context/CartContext';
+import { useTabletLayout } from '../../constants/layout';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type CartItem = {
-  id: string;
-  category: string;
-  name: string;
-  price: string;
-  desc: string;
-};
-
-// ─── Cart Screen ─────────────────────────────────────────────────────────────
+// ─── Cart Screen (phone) ──────────────────────────────────────────────────────
+// On tablet, this screen is not shown — the cart panel is inline in the menu.
 
 export default function CartScreen() {
   const router = useRouter();
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const { cartItems, notes, isLoaded, removeItem, updateNote, confirmOrder } = useCart();
+  const { isTablet } = useTabletLayout();
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
-  const [notes, setNotes] = useState<{ [key: string]: string }>({});
 
-  const loadCart = useCallback(async () => {
-    try {
-      const itemsRaw = await AsyncStorage.getItem('cartItems');
-      const notesRaw = await AsyncStorage.getItem('cartNotes');
-      setCartItems(itemsRaw ? JSON.parse(itemsRaw) : []);
-      setNotes(notesRaw ? JSON.parse(notesRaw) : {});
-    } catch {
-      setCartItems([]);
-      setNotes({});
-    }
-  }, []);
-
-  // useFocusEffect from expo-router fires whenever this tab gains focus in the
-  // outer tab navigator — covers first visit and every return from another tab.
-  useFocusEffect(
-    useCallback(() => {
-      loadCart();
-      return () => {};
-    }, [loadCart])
-  );
-
-  async function updateNote(itemId: string, text: string) {
-    const updated = { ...notes, [itemId]: text };
-    setNotes(updated);
-    AsyncStorage.setItem('cartNotes', JSON.stringify(updated)).catch(() => {});
-  }
-
-  async function removeItem(itemId: string) {
-    const updatedItems = cartItems.filter((item) => item.id !== itemId);
-    const updatedNotes = { ...notes };
-    delete updatedNotes[itemId];
-    setCartItems(updatedItems);
-    setNotes(updatedNotes);
-    try {
-      await AsyncStorage.setItem('cartItems', JSON.stringify(updatedItems));
-      await AsyncStorage.setItem('cartNotes', JSON.stringify(updatedNotes));
-    } catch {}
-  }
-
-  async function confirmOrder() {
-    // Re-read from storage to avoid stale state from a concurrent remove.
-    try {
-      const freshRaw = await AsyncStorage.getItem('cartItems');
-      const freshNotesRaw = await AsyncStorage.getItem('cartNotes');
-      const freshItems: CartItem[] = freshRaw ? JSON.parse(freshRaw) : cartItems;
-      const freshNotes = freshNotesRaw ? JSON.parse(freshNotesRaw) : notes;
-      await AsyncStorage.setItem('orderItems', JSON.stringify(freshItems));
-      await AsyncStorage.setItem('orderNotes', JSON.stringify(freshNotes));
-    } catch {}
+  async function handleConfirm() {
+    await confirmOrder();
     router.push('/order-summary');
   }
 
-  // ─── Empty state ───────────────────────────────────────────────────────────
+  const total = cartItems.reduce((sum, item) => {
+    const num = parseFloat(item.price.replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(num) ? 0 : num);
+  }, 0);
+
+  // ─── Loading ───────────────────────────────────────────────────────────────
+
+  if (!isLoaded) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
+
+  // ─── Empty ─────────────────────────────────────────────────────────────────
 
   if (cartItems.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.headerBlock}>
-          <Text style={styles.label}>unfnshed</Text>
-          <Text style={styles.title}>CART</Text>
+          <Text style={styles.label}>fnshedrink</Text>
+          <Text style={[styles.title, isTablet && styles.titleTablet]}>CART</Text>
         </View>
 
         <View style={styles.emptyBox}>
@@ -88,8 +48,11 @@ export default function CartScreen() {
           <Text style={styles.placeholderText}>choose a drink from the menu to start an order</Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={() => router.push('/(tabs)/menu')}>
-          <Text style={styles.buttonText}>open menu</Text>
+        <TouchableOpacity
+          style={[styles.button, isTablet && styles.buttonTablet]}
+          onPress={() => router.push('/(tabs)/menu')}
+        >
+          <Text style={[styles.buttonText, isTablet && styles.buttonTextTablet]}>open menu</Text>
         </TouchableOpacity>
       </View>
     );
@@ -100,17 +63,17 @@ export default function CartScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator>
       <View style={styles.headerBlock}>
-        <Text style={styles.label}>unfnshed</Text>
-        <Text style={styles.title}>CART</Text>
+        <Text style={styles.label}>fnshedrink</Text>
+        <Text style={[styles.title, isTablet && styles.titleTablet]}>CART</Text>
         <Text style={styles.itemCountLabel}>
-          {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} in cart
+          {cartItems.length} item{cartItems.length !== 1 ? 's' : ''} · PHP {total}
         </Text>
       </View>
 
       {cartItems.map((item) => (
-        <View key={item.id} style={styles.card}>
+        <View key={item.id} style={[styles.card, isTablet && styles.cardTablet]}>
           <Text style={styles.cardLabel}>selected drink</Text>
-          <Text style={styles.cardItemName}>{item.name}</Text>
+          <Text style={[styles.cardItemName, isTablet && styles.cardItemNameTablet]}>{item.name}</Text>
           <Text style={styles.cardItemMeta}>{item.category} · {item.price}</Text>
 
           <TouchableOpacity
@@ -139,12 +102,18 @@ export default function CartScreen() {
         </View>
       ))}
 
-      <TouchableOpacity style={styles.addMoreButton} onPress={() => router.push('/(tabs)/menu')}>
+      <TouchableOpacity
+        style={styles.addMoreButton}
+        onPress={() => router.push('/(tabs)/menu')}
+      >
         <Text style={styles.addMoreButtonText}>+ add more drinks</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.confirmButton} onPress={confirmOrder}>
-        <Text style={styles.confirmButtonText}>
+      <TouchableOpacity
+        style={[styles.confirmButton, isTablet && styles.confirmButtonTablet]}
+        onPress={handleConfirm}
+      >
+        <Text style={[styles.confirmButtonText, isTablet && styles.confirmButtonTextTablet]}>
           confirm order ({cartItems.length} item{cartItems.length !== 1 ? 's' : ''})
         </Text>
       </TouchableOpacity>
@@ -155,6 +124,12 @@ export default function CartScreen() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -179,6 +154,9 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     letterSpacing: 4,
     color: '#000',
+  },
+  titleTablet: {
+    fontSize: 36,
   },
   itemCountLabel: {
     fontSize: 12,
@@ -214,6 +192,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#fff',
   },
+  cardTablet: {
+    padding: 20,
+  },
   cardLabel: {
     fontSize: 10,
     color: '#999',
@@ -227,6 +208,9 @@ const styles = StyleSheet.create({
     color: '#000',
     marginBottom: 4,
   },
+  cardItemNameTablet: {
+    fontSize: 22,
+  },
   cardItemMeta: {
     fontSize: 13,
     color: '#666',
@@ -236,8 +220,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#000',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     marginBottom: 8,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   instructionButtonText: {
     fontSize: 12,
@@ -246,7 +232,7 @@ const styles = StyleSheet.create({
     textTransform: 'lowercase',
   },
   noteInput: {
-    minHeight: 72,
+    minHeight: 80,
     borderWidth: 1,
     borderColor: '#000',
     padding: 12,
@@ -259,8 +245,10 @@ const styles = StyleSheet.create({
   removeButton: {
     borderWidth: 1,
     borderColor: '#000',
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
+    minHeight: 48,
+    justifyContent: 'center',
   },
   removeButtonText: {
     color: '#000',
@@ -272,10 +260,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#000',
     borderStyle: 'dashed',
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 12,
+    minHeight: 52,
+    justifyContent: 'center',
   },
   addMoreButtonText: {
     color: '#000',
@@ -287,10 +277,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#000',
     backgroundColor: '#000',
-    paddingVertical: 14,
+    paddingVertical: 16,
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 32,
+    minHeight: 56,
+    justifyContent: 'center',
+  },
+  confirmButtonTablet: {
+    paddingVertical: 22,
+    minHeight: 68,
   },
   confirmButtonText: {
     color: '#fff',
@@ -298,19 +294,33 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: 'lowercase',
   },
+  confirmButtonTextTablet: {
+    fontSize: 16,
+    letterSpacing: 2,
+  },
   button: {
     borderWidth: 1,
     borderColor: '#000',
     backgroundColor: '#000',
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 12,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  buttonTablet: {
+    paddingVertical: 20,
+    minHeight: 64,
   },
   buttonText: {
     color: '#fff',
     fontSize: 13,
     letterSpacing: 1,
     textTransform: 'lowercase',
+  },
+  buttonTextTablet: {
+    fontSize: 16,
+    letterSpacing: 2,
   },
 });

@@ -1,11 +1,13 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCart } from '../context/CartContext';
+import { useTabletLayout } from '../constants/layout';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type CartItem = {
+type OrderItem = {
   id: string;
   category: string;
   name: string;
@@ -17,8 +19,12 @@ type CartItem = {
 
 export default function OrderSummaryScreen() {
   const router = useRouter();
-  const [items, setItems] = useState<CartItem[]>([]);
+  const { clearCart } = useCart();
+  const { isTablet } = useTabletLayout();
+
+  const [items, setItems] = useState<OrderItem[]>([]);
   const [notes, setNotes] = useState<{ [key: string]: string }>({});
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     loadOrder();
@@ -31,59 +37,78 @@ export default function OrderSummaryScreen() {
       if (itemsRaw) setItems(JSON.parse(itemsRaw));
       if (notesRaw) setNotes(JSON.parse(notesRaw));
     } catch {}
+    setIsLoaded(true);
   }
 
-  function calculateTotal() {
-    if (items.length === 0) return 'PHP 0';
-    const total = items.reduce((sum, item) => {
-      const num = parseFloat(item.price.replace(/[^0-9.]/g, ''));
-      return sum + (isNaN(num) ? 0 : num);
-    }, 0);
-    return `PHP ${total}`;
-  }
+  const total = items.reduce((sum, item) => {
+    const num = parseFloat(item.price.replace(/[^0-9.]/g, ''));
+    return sum + (isNaN(num) ? 0 : num);
+  }, 0);
 
   async function startNewOrder() {
-    await AsyncStorage.multiRemove(['cartItems', 'cartNotes', 'orderItems', 'orderNotes']);
+    await clearCart();
     router.replace('/(tabs)/menu');
   }
+
+  // ─── Loading ───────────────────────────────────────────────────────────────
+
+  if (!isLoaded) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#000" />
+      </View>
+    );
+  }
+
+  // ─── Summary ───────────────────────────────────────────────────────────────
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator>
       <View style={styles.headerBlock}>
-        <Text style={styles.label}>unfnshed</Text>
-        <Text style={styles.title}>SUMMARY</Text>
+        <Text style={styles.label}>fnshedrink</Text>
+        <Text style={[styles.title, isTablet && styles.titleTablet]}>SUMMARY</Text>
       </View>
 
       <View style={styles.statusBox}>
-        <Text style={styles.placeholderLabel}>status</Text>
-        <Text style={styles.placeholderText}>ready for counter confirmation</Text>
+        <Text style={styles.metaLabel}>status</Text>
+        <Text style={styles.statusText}>ready for counter confirmation</Text>
       </View>
 
       <View style={styles.totalBox}>
-        <Text style={styles.placeholderLabel}>total</Text>
-        <Text style={styles.totalText}>{calculateTotal()}</Text>
+        <Text style={styles.metaLabel}>total</Text>
+        <Text style={[styles.totalText, isTablet && styles.totalTextTablet]}>PHP {total}</Text>
       </View>
 
       {items.map((item, index) => (
-        <View key={item.id} style={styles.summaryCard}>
+        <View key={item.id} style={[styles.summaryCard, isTablet && styles.summaryCardTablet]}>
           <Text style={styles.summaryLabel}>drink #{index + 1}</Text>
-          <Text style={styles.summaryName}>{item.name}</Text>
+          <Text style={[styles.summaryName, isTablet && styles.summaryNameTablet]}>{item.name}</Text>
           <Text style={styles.summaryMeta}>{item.category} · {item.price}</Text>
-          {notes[item.id] && (
+          {notes[item.id] ? (
             <View style={styles.summaryNoteBox}>
               <Text style={styles.summaryNoteLabel}>special instructions</Text>
               <Text style={styles.summaryNoteText}>{notes[item.id]}</Text>
             </View>
-          )}
+          ) : null}
         </View>
       ))}
 
-      <TouchableOpacity style={styles.button} onPress={startNewOrder}>
-        <Text style={styles.buttonText}>new order</Text>
+      <TouchableOpacity
+        style={[styles.primaryButton, isTablet && styles.primaryButtonTablet]}
+        onPress={startNewOrder}
+      >
+        <Text style={[styles.primaryButtonText, isTablet && styles.primaryButtonTextTablet]}>
+          new order
+        </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity style={styles.outlineButton} onPress={() => router.back()}>
-        <Text style={styles.outlineButtonText}>← edit order</Text>
+      <TouchableOpacity
+        style={[styles.outlineButton, isTablet && styles.outlineButtonTablet]}
+        onPress={() => router.back()}
+      >
+        <Text style={[styles.outlineButtonText, isTablet && styles.outlineButtonTextTablet]}>
+          edit order
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -92,6 +117,12 @@ export default function OrderSummaryScreen() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fff',
@@ -117,6 +148,9 @@ const styles = StyleSheet.create({
     letterSpacing: 4,
     color: '#000',
   },
+  titleTablet: {
+    fontSize: 36,
+  },
   statusBox: {
     borderWidth: 1,
     borderColor: '#e0e0e0',
@@ -131,22 +165,25 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
   },
-  totalText: {
-    fontSize: 20,
-    color: '#000',
-    fontWeight: '300',
-  },
-  placeholderLabel: {
+  metaLabel: {
     fontSize: 10,
     color: '#999',
     letterSpacing: 1,
     textTransform: 'uppercase',
     marginBottom: 4,
   },
-  placeholderText: {
+  statusText: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  totalText: {
+    fontSize: 22,
+    color: '#000',
+    fontWeight: '300',
+  },
+  totalTextTablet: {
+    fontSize: 28,
   },
   summaryCard: {
     borderWidth: 1,
@@ -155,6 +192,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
     backgroundColor: '#f9f9f9',
+  },
+  summaryCardTablet: {
+    padding: 20,
   },
   summaryLabel: {
     fontSize: 10,
@@ -168,6 +208,9 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#000',
     marginBottom: 4,
+  },
+  summaryNameTablet: {
+    fontSize: 20,
   },
   summaryMeta: {
     fontSize: 12,
@@ -192,34 +235,54 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 18,
   },
-  button: {
+  primaryButton: {
     borderWidth: 1,
     borderColor: '#000',
     backgroundColor: '#000',
-    paddingVertical: 12,
+    paddingVertical: 16,
     alignItems: 'center',
     marginHorizontal: 20,
     marginBottom: 12,
+    minHeight: 56,
+    justifyContent: 'center',
   },
-  buttonText: {
+  primaryButtonTablet: {
+    paddingVertical: 22,
+    minHeight: 68,
+  },
+  primaryButtonText: {
     color: '#fff',
     fontSize: 13,
     letterSpacing: 1,
     textTransform: 'lowercase',
   },
+  primaryButtonTextTablet: {
+    fontSize: 16,
+    letterSpacing: 2,
+  },
   outlineButton: {
     borderWidth: 1,
     borderColor: '#000',
     backgroundColor: '#fff',
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     marginHorizontal: 20,
-    marginBottom: 32,
+    marginBottom: 40,
+    minHeight: 52,
+    justifyContent: 'center',
+  },
+  outlineButtonTablet: {
+    paddingVertical: 18,
+    minHeight: 60,
   },
   outlineButtonText: {
     color: '#000',
     fontSize: 13,
     letterSpacing: 1,
     textTransform: 'lowercase',
+  },
+  outlineButtonTextTablet: {
+    fontSize: 16,
+    letterSpacing: 2,
   },
 });

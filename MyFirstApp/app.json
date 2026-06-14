@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "unfnshed",
-    "slug": "unfnshed",
+    "name": "fnshedrink",
+    "slug": "fnshedrink",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "unfnshed",
+    "scheme": "fnshedrink",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
